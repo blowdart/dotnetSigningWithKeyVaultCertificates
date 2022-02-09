@@ -410,7 +410,7 @@ Next we sign the new nupkg packages
 And finally, now we have everything signed we can publish the signed artifacts. 
 
 ```yaml
-      # Publish unsigned packages
+      # Publish signed packages
       - publish: $(Pipeline.Workspace)\BuildPackages
         displayName: Publish signed artifacts
         artifact: SignedPackages
