@@ -364,13 +364,13 @@ For signing itself the first step we need to perform is signing the assemblies w
                  }
 ```
 
-You will need to adjust the assembly detection piece,
+You will need to adjust the assembly detection pattern for building the list of files to sign to match your own assembly naming patterns.
 
 ```powershell
 Get-ChildItem -Path "$(Pipeline.Workspace)\BuildPackages\idunno.Authentication.*.dll" -Recurse |
 ```
 
-to match your own assembly patterns.
+The example above will look for any assembly beginning with idunno.Authentication. as that's what my code outputs.
 
 Next we sign the new nupkg packages
 
@@ -416,7 +416,7 @@ And finally, now we have everything signed we can publish the signed artifacts.
         artifact: SignedPackages
 ```
 
-And that's "all" it takes to Authenticode and nuget sign the output of a .NET build. 
+And that's "all" it takes to Authenticode and nuget sign the output of a .NET build. I use this script to compile and sign the [idunno.Authentication](https://github.com/blowdart/idunno.Authentication) nuget packages should you want to see a complete [codesigning pipeline definition](https://github.com/blowdart/idunno.Authentication/blob/dev/azure-pipelines.yml).
 
 If you think this is complicated you should see what the .NET team has to go through where signing is an entirely separate service where we don't have access to the keys at all.
 
