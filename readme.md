@@ -103,7 +103,7 @@ stages:
         projects: '**/*.csproj'
         arguments: '--configuration $(buildConfiguration)'
 
-    # Disable code coverage for now
+    # Run tests
     - task: DotNetCoreCLI@2
       displayName: dotnet test
       inputs:
@@ -129,7 +129,7 @@ stages:
       artifact: BuildPackages
 ```
 
-This is all pretty standard stuff, except for the disabling of code coverage because [Coverlet](https://github.com/coverlet-coverage/coverlet) broke when I originally added [reproducible builds](https://github.com/dotnet/reproducible-builds) and I haven't re-enabled it yet, even though it's been fixed for about six months. The output from the build is the nuget packages containing unsigned code.
+This is all pretty standard stuff,  with the output from the build being the nuget packages containing unsigned code.
 
 ## Adding signing to your pipeline
 
@@ -149,11 +149,13 @@ I like turning purge protection on because I'm paranoid about deleting the wrong
 
 Make a note of the Vault URI, you will need it later. Do the same for the Directory ID, this is your Azure Tenant ID.
 
-Now it's time to upload your certificate. In the menu for the Key Vault instance you can see a Settings grouping, with a Certificates menu option. Click it and you'll see a `+ Generate / Import` link. Click it and change the `Method Of Client Creation` drop down to `Import`. Enter a descriptive name for the certificate, and make a note of it, then select the certificate file to upload and enter the pfx password.
+Now it's time to upload your certificate. In the menu for the Key Vault instance you can see a Settings grouping, with a Certificates menu option. Click it and you'll see a `+ Generate / Import` link. Click it and change the `Method Of Client Creation` drop down to `Import`. Enter a descriptive name for the certificate, and make a note of it, then select the certificate file to upload and enter the pfx password. The password is the one you set when you exported the certificate, or the one provided by the CA when you requested a pfx.
 
 ![The screen for importing a certificate](images/CertificateImport.png)
 
 Click "`Create`" and your certificate will be uploaded and imported and is now safe and secure inside Key Vault. So safe and secure you can't access it.
+
+ If you don't have a pfx file containing your certificate but the certificate is your Windows Certificate store you can create one by opening `mmc.exe`, use `File > Add/Remove Snap-in`, and select the Certificates snap-in, scope it to the account your certificate is in (typically the My user account). Open the Personal\Certificates folder then right click on your certificate, select `All Tasks>Export..` and go through the wizard. Make sure to select "Yes, export the private key", then on the security dialog check the Password check box, enter a strong password and change the encryption to be AES256-SHA256.
 
 ### Granting access to the certificate
 
@@ -192,7 +194,7 @@ You should now have the following details for your Key Vault and AD Application 
 
 ### Testing locally
 
-If you want to test signing locally create a temporary directory, copy one of your unsigned assemblies into it, open PowerShell (you're using [Windows Terminal](https://docs.microsoft.com/en-us/windows/terminal/install) right?), install the AzureCodeSign tool with `dotnet tool install azuresigntool` then run the following, replacing the parameter values with the secrets from the checklist above and filename.dll with your test file:
+You can test the AzureCodeSign tool locally on Windows (as Authenticode is an undocumented black box the AzureCodeSign tool will only run on Windows). Create a temporary directory, copy one of your unsigned assemblies into it, open PowerShell (you're using [Windows Terminal](https://docs.microsoft.com/en-us/windows/terminal/install) right?), install the AzureCodeSign tool with `dotnet tool install azuresigntool` then run the following, replacing the parameter values with the secrets from the checklist above and filename.dll with your test file:
 
 ```powershell
 azuresigntool.exe sign `
@@ -266,12 +268,12 @@ Now we get sneaky with the environment, which needs have some extra yaml entries
 
 Remember environments are meant for deployments, so we need extra settings to get it created, configured and to a point to where we can start running steps. The steps for the code signing portion of our build will come after the deploy node. 
 
-One important thing to note here is we're telling Pipelines that in this job we can access our variable group with the following
+With the variables node we're telling Pipelines that in this job we can access our variable group:
 
     variables:
     - group: Signing Credentials
 
-This will inject our Key Vault access secrets into the signing environment.
+This injects our Key Vault access secrets into the signing environment.
 
 For signing itself the first step we need to perform is signing the assemblies we created during our build. However we don't have those assemblies any more, we have the artifacts created during the build, which are nupkgs. We have to crack those open so we can access the assemblies and the repack the signed assemblies as a nupkg once more. To do this we look take our build output packages, rename them from .nupkg to .zip (because nupkgs are just zip files with a standard structure), extract the zip contents, delete the files and directories that `nuget pack` creates, as they'll be recreated once we're done, then iterate though the extracted contents building a list of files that need signing, sign them, then repack the nupkgs.
 
