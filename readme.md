@@ -223,6 +223,12 @@ Obviously you don't want to hardcode all those secret values into your pipeline 
 
 As you enter each secret click the unlocked item to change it to locked so the variable is marked as a secret so you'll never see it again in portal.  Once you're done, save your variable group. If you just want to cut and paste the sample code you should name your variables like mine.
 
+Finally you need to grant your build service access to the new variable group. In the Variable Groups List under library click the vertical ellipsis and choose Security
+
+![Context Menu for Variable Groups](images/variableGroupContextMenu.png)
+
+In the Assign Security Roles pop -up click `+ Add`and search for Build Service, and assign the Reader role. If you don't do this your pipeline will pause, warning you it doesn't have permissions to the secret group and you can assign the role from that alert.
+
 #### Isolating signing in a separate environment
 
 Typically [Azure Pipelines environments](https://docs.microsoft.com/en-us/azure/devops/pipelines/process/environment) are a collection of resources for deployment. The important feature we want to use is they're isolated. We never want the main build pipeline to have access to the secrets used for codesigning, especially in open source projects where you may build code you've never seen or validated when someone creates a PR. Such code could look at the environment variables for the build environment and send them elsewhere, and if those environment variables contain your certificate access secrets now you have a major problem.
@@ -230,6 +236,8 @@ Typically [Azure Pipelines environments](https://docs.microsoft.com/en-us/azure/
 Under the Pipelines menu in the DevOps portal select Environments and click `New Environment`, enter a descriptive name for the environment, which you'll use in the pipeline yaml, and a description, leave Resource as none, and click `Create`. Now select the newly created environment by clicking on it and click the vertical ellipsis button (`⋮`) and select the Security option. You'll see a list of permissions, including Pipeline permissions section. Click `+` to display a list of your pipelines and select the pipeline you will be codesigning in.
 
 ![Pipeline Permissions for an environment](images/environmentPipelinePermissions.png)
+
+If you don't do this your pipeline will pause, warning you it doesn't have permissions to the environment and you can assign the role from that alert.
 
 Now we have a separate environment we can use for code signing without worrying about running code from untrusted sources.
 
